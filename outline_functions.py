@@ -77,6 +77,7 @@ def main():
     my_display = Display()
     my_display.root.mainloop()
 
+
 if __name__== "__main__":
     main()
     

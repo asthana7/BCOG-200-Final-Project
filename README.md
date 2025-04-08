@@ -28,3 +28,8 @@ Names of functions/methods and their parameters:
 8. pause_song(right_hand): for all gesture-recognition based tasks, I intend to assign the right hand. For pausing, the gesture will be index finger pointing up.
 
 9. like_song(right_hand): To heart the song and add it to the user's Spotify library, the gesture will be the ASL 'I love you' (palm facing forward with the thumb, index finger and pinky finger pointing up and middle and ring finger folded in)
+
+Why would anyone use this?
+- This program can be useful for music production and DJing on the spot.
+- It can also be helpful for improving accessibility as it can be modified to not need a keyboard
+

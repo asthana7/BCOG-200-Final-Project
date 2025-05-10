@@ -10,107 +10,104 @@
 #since it can recognise clockwise/ counter-clockwise, use that to forward/ rewind a song
 # src/gui.py
 
-import os
+
 from tkinter import filedialog, ttk, messagebox
 import tkinter as tk
-import librosa
+from src.gesture_manager import GestureManager
+from src.audio_manipulation import AudioManager
+import time
+import threading
+from src.hand_model import my_own_calc
+import queue
 
 class AudioGestureApp:
     def __init__(self, root):
         self.root = root
-        self.audio_data == None
+        self.root.title("Wave 'Em Around")
+
+        self.audio_manager = AudioManager()
+        self.song_path = None
+        #self.gesture_manager = GestureManager()
+        self.gesture_queue = queue.Queue()
+        self.gesture_manager = GestureManager(self.gesture_queue)
+
+        self.audio_data = None
         self.sr = None
-        self.original_audio_data = None
-        self.song_path = None  # This will store the file path of the selected song
-        self.setup_ui()
 
-    def setup_ui(self):
-        self.root.title("Gesture-controlled Audio Manipulation")
+        self.song_label = tk.Label(root, text = "No song selected")
+        self.song_label.pack()
+
+        self.select_song_button = tk.Button(root, text = "Select Song", command =lambda: self.select_song())
+        self.select_song_button.pack()
+
+        self.volume_label = tk.Label(root, text = "Volume: 1.0")
+        self.volume_label.pack()
+
+        self.pitch_label = tk.Label(root, text = "Pitch: 1.0")
+        self.pitch_label.pack()
+
+        self.speed_label = tk.Label(root, text = "Speed: 1.0")
+        self.speed_label.pack()
+
         
-        # Song selection frame
-        self.song_frame = tk.Frame(self.root)
-        self.song_frame.pack(pady=10)
-        
-        self.song_label = tk.Label(self.song_frame, text="No song selected", font=("Arial", 14))
-        self.song_label.pack(pady=10)
+        self.process_gestures_thread()
+        threading.Thread(target=self.start_camera_feed, daemon = True).start()
 
-        # "Select Song" Button
-        self.select_button = tk.Button(self.song_frame, text="Select Song", command=self.select_audio_file)
-        self.select_button.pack(pady=5)
-
-        # Song list menu (this will show songs in your 'audio' folder)
-        self.song_list_frame = tk.Frame(self.root)
-        self.song_list_frame.pack(pady=10)
-
-        self.song_menu_label = tk.Label(self.song_list_frame, text="Choose a song from list:", font=("Arial", 12))
-        self.song_menu_label.pack(pady=10)
-
-        # List songs in 'audio/' directory and show them
-        self.show_song_menu()
-
-        # Display some effect buttons (optional, depending on your app)
-        self.effect_buttons_frame = tk.Frame(self.root)
-        self.effect_buttons_frame.pack(pady=10)
-
-        # Button to apply effect (just a placeholder for now)
-        self.effect_button = tk.Button(self.effect_buttons_frame, text="Apply Effect", command=self.apply_effect)
-        self.effect_button.pack(pady=10)
-
-    def show_song_menu(self):
-        # List all MP3 files in the 'audio' directory
-        audio_dir = os.path.join(os.path.dirname(__file__), 'audio')
-        mp3_files = [f for f in os.listdir(audio_dir) if f.endswith('.mp3')]
-
-        if mp3_files:
-            # Create a dropdown menu to select a song from the list
-            self.song_menu = ttk.Combobox(self.song_list_frame, values=mp3_files)
-            self.song_menu.pack(pady=10)
-
-            # Set default value to the first song in the list
-            self.song_menu.set(mp3_files[0])
-
-            # "Load selected song" Button
-            self.load_button = tk.Button(self.song_list_frame, text="Load Selected Song", command=self.load_selected_song)
-            self.load_button.pack(pady=5)
-        else:
-            # Show a message if no MP3 files are found in the directory
-            self.no_songs_label = tk.Label(self.song_list_frame, text="No songs available in the 'audio/' folder.", font=("Arial", 12))
-            self.no_songs_label.pack(pady=10)
-
-    def load_selected_song(self):
-        song_name = self.song_menu.get()
-        audio_dir = os.path.join(os.path.dirname(__file__), 'audio')
-        self.song_path = os.path.join(audio_dir, song_name)
-        self.audio_data, self.sr = self.load_audio_file(self.song_path)
-        self.song_label.config(text=f"Selected song: {song_name}")
-        # print(f"Song path: {self.song_path}")
-
-        # # After loading the song, you can trigger any additional logic (like gesture manipulation)
-        # self.apply_effect()  # Just for testing, we'll apply an effect right away
-
-    # def select_audio_file(self):
-    #     file_path = filedialog.askopenfilename(
-    #         title="Select an MP3 file",
-    #         filetypes=[("MP3 files", "*.mp3")]
-    #     )
-    #     if file_path:
-    #         self.song_path = file_path
-    #         song_name = os.path.basename(file_path)
-    #         self.song_label.config(text=f"Selected song: {song_name}")
-    #         print(f"Song path: {self.song_path}")
-
-    #         # After selecting a file, you can trigger any additional logic (like gesture manipulation)
-    #         self.apply_effect()  # Just for testing, we'll apply an effect right away
-    #     else:
-    #         print("No file selected.")
-
-    def load_audio_file(self, path):
-        audio_data, sr = librosa.load(path, sr = None)
-        return audio_data, sr
-
-    def apply_effect(self):
-        # Placeholder for effect logic (e.g. changing volume, pitch, etc.)
+    def select_song(self):
+        # Trigger file selection and load audio file
+        self.song_path = tk.filedialog.askopenfilename(filetypes=[("MP3 files", "*.mp3")])
         if self.song_path:
-            print(f"Applying effect to: {self.song_path}")
+            self.audio_data, self.sr = self.audio_manager.load_audio_file(self.song_path)
+            self.song_label.config(text=f"Playing: {self.song_path.split('/')[-1]}")
+            self.start_audio_playback()
+            self.process_gestures_thread()
+        # return self.song_path
+
+    def start_audio_playback(self):
+        if self.audio_data:
+            self.audio_manager.play_audio(self.audio_data)
+
         else:
-            print("No song selected.")
+            print("No audio loaded to play")
+    
+    def start_camera_feed(self):
+        my_own_calc.start_tracking()
+
+    def process_gestures_thread(self):
+        """Run gesture processing in a separate thread to avoid blocking the GUI."""
+        
+        threading.Thread(target=self.process_gestures, daemon=True).start()
+
+
+    def process_gestures(self):
+        #Check for gesture changes in the loop
+        while True:
+            gesture_data = self.gesture_queue.get()
+            effect_change = self.gesture_manager.process_gestures()
+
+            if effect_change:
+                effect_type, effect_value = effect_change
+
+                if effect_type == 'volume':
+                    self.audio_manager.volume(effect_value)
+                    self.root.after(0, self.update_volume_label, effect_value)
+                elif effect_type == 'pitch':
+                    self.audio_manager.frequency(effect_value)
+                    self.root.after(0, self.update_pitch_label, effect_value)
+                elif effect_type == 'speed':
+                    self.audio_manager.speed(effect_value)
+                    self.root.after(0, self.update_speed_label, effect_value)
+
+            time.sleep(0.1)  # Adjust frequency of gesture processing
+
+    def update_volume_label(self, effect_value):
+        """Update the volume label."""
+        self.volume_label.config(text=f"Volume: {effect_value:.2f}")
+
+    def update_pitch_label(self, effect_value):
+        """Update the pitch label."""
+        self.pitch_label.config(text=f"Pitch: {effect_value:.2f}")
+
+    def update_speed_label(self, effect_value):
+        """Update the speed label."""
+        self.speed_label.config(text=f"Speed: {effect_value:.2f}")

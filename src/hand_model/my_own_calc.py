@@ -37,6 +37,7 @@ def update_loop():
 def start_tracking():
     threading.Thread(target = app.main, daemon = True).start()
     threading.Thread(target = update_loop, daemon = True).start()
+    print("Threading started, location: my_own_calc")
 
 def ii_distance():
     return i_i_distance

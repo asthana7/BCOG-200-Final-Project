@@ -1,7 +1,7 @@
 # src/gesture_manager.py
 import numpy as np
 from src.hand_model import my_own_calc
-from src.audio_manipulation import volume, frequency, speed  # Your existing functions
+from src.audio_manipulation import AudioManager  as am # Your existing functions
 
 def map_distance_to_effect(distance, min_d, max_d, min_val, max_val):
     """
@@ -45,15 +45,15 @@ class GestureManager:
     def _handle_volume_change(self, d_volume):
         print(f"Volume distance: {d_volume:.3f}")
         new_volume = map_distance_to_effect(d_volume, 0.02, 0.3, 0.0, 1.0)
-        volume(new_volume)
+        return ('volume', new_volume)
 
     def _handle_pitch_change(self, d_pitch):
         print(f"Pitch distance: {d_pitch:.3f}")
         new_pitch = map_distance_to_effect(d_pitch, 0.01, 0.25, 0.8, 1.25)
-        frequency(new_pitch)
+        return ('pitch', new_pitch)
 
     def _handle_speed_change(self, d_speed):
         print(f"Speed distance: {d_speed:.3f}")
         new_speed = map_distance_to_effect(d_speed, 0.01, 0.25, 0.5, 1.5)
-        speed(new_speed)
+        return ('speed', new_speed)
 

@@ -1,11 +1,13 @@
 import tkinter as tk
-from src.potent_gui import AudioGestureApp
+from src.gui.app_controller import AppController
+
 
 def main():
     root = tk.Tk()
-    app = AudioGestureApp(root)
+    app = AppController(root)
     root.mainloop()
 
 if __name__ == "__main__":
     main()
-     
+
+

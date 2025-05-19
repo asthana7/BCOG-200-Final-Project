@@ -11,14 +11,16 @@ import os
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
+import pygetwindow as gw
 
-from .utils import CvFpsCalc
-from .model import KeyPointClassifier
-from .model import PointHistoryClassifier
+from .utils.cvfpscalc import CvFpsCalc
+from .model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
+from .model.point_history_classifier.point_history_classifier import PointHistoryClassifier
 
 #my own additions-->
 latest_coords = {'Left':None, 'Right': None}
 is_running = True
+#frame_count = 0
 
 
 label_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'model', 'keypoint_classifier', 'keypoint_classifier_label.csv'))
@@ -47,7 +49,7 @@ def get_args():
 
     return args
 
-
+latest_frame = None #global var for GUI
 def main():
     # Argument parsing #################################################################
     global latest_coords, is_running
@@ -113,7 +115,8 @@ def main():
 
     #  ########################################################################
     mode = 0
-
+    frame_count = 0
+    window_positioned = False
     while True:
         fps = cvFpsCalc.get()
 
@@ -206,8 +209,28 @@ def main():
         debug_image = draw_point_history(debug_image, point_history)
         debug_image = draw_info(debug_image, fps, mode, number)
 
+        #my addition -->>>>>>
+        debug_image_for_gui = debug_image.copy()
+        latest_frame = debug_image_for_gui
         # Screen reflection #############################################################
         cv.imshow('Hand Gesture Recognition', debug_image)
+        if not window_positioned:
+            try:
+                win = gw.getWindowsWithTitle('Hand Gesture Recognition')[0]
+                win.moveTo(1300,0)
+                win.resizeTo(600,500)
+                window_positioned = True
+            except Exception as e:
+                print("Window move error", e)
+        # frame_count += 1
+        # if frame_count % 30 == 0:
+        #     try:
+        #         win = gw.getWindowsWithTitle('Hand Gesture Recognition')[0]
+        #         win.moveTo(960,0)
+        #         win.activate()
+        #     except IndexError:
+        #         pass
+        
 
     
     is_running = False

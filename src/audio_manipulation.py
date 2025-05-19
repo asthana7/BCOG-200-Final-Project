@@ -15,7 +15,7 @@ class AudioManager:
         self.block_size = 8192
         self.last_chunk = np.zeros(4410, dtype = np.float32)
         self.effect_buffer = np.zeros(0, dtype = np.float32)
-        self.buffer_threshold = 22050 #0.5 second approx
+        self.buffer_threshold = 44100 #1 second approx
         self.processed_buffer = np.zeros(0, dtype = np.float32)
 
     def load_audio_file(self, path):
@@ -68,21 +68,23 @@ class AudioManager:
         if len(self.effect_buffer) >= self.buffer_threshold:
             try:
                 temp = self.effect_buffer.copy()
-                success = True
+                #success = True
 
                 if self.pitch_factor != 0.0 and len(temp) >= 2048:
-                    temp = librosa.effects.pitch_shift(y = temp, sr=self.sr, n_steps=self.pitch_factor)
+                    temp = librosa.effects.pitch_shift(temp, sr=self.sr, n_steps=self.pitch_factor)
 
                 if self.speed_factor != 1.0 and len(temp) >= 2048:
-                    temp = librosa.effects.time_stretch(y = temp, rate = self.speed_factor)
-
+                    temp = librosa.effects.time_stretch(temp, rate = self.speed_factor)
+                if temp.size == 0:
+                    raise ValueError("Processed buffer empty after effects")
+                
                 self.processed_buffer = np.concatenate((self.processed_buffer, temp))
                 self.effect_buffer = np.zeros(0, dtype=np.float32)
             except Exception as e:
                 print("Effect processing error:", e)
-                success = False
-                fallback = self.audio_data[start:end]
-                self.processed_buffer = np.concatenate((self.processed_buffer, fallback))
+                # success = False
+                # fallback = self.audio_data[start:end]
+                # self.processed_buffer = np.concatenate((self.processed_buffer, fallback))
 
         #extract final output from processed buffer
         if len(self.processed_buffer) >= frames:
@@ -94,7 +96,11 @@ class AudioManager:
 
         #applying volume
         chunk *= self.volume_factor
-
+        if not np.isfinite(chunk).all():
+            print("Non-finite values in chunk - zeroing out")
+            chunk = np.zeros(frames, dtype = np.float32)
+        # if chunk.size == 0:
+        #     chunk = np.zeros(frames, dtype = np.float32)
         try:
             outdata[:] = chunk.reshape(-1, 1)
         except Exception as e:

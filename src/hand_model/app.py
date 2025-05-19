@@ -7,6 +7,7 @@ import itertools
 from collections import Counter
 from collections import deque
 
+import os
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -19,6 +20,12 @@ from .model import PointHistoryClassifier
 latest_coords = {'Left':None, 'Right': None}
 is_running = True
 
+
+label_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'model', 'keypoint_classifier', 'keypoint_classifier_label.csv'))
+point_label_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'model', 'point_history_classifier', 'point_history_classifier_label.csv'))
+
+print("Label path is:", label_path)
+print("Exists?", os.path.exists(label_path))
 def get_args():
     parser = argparse.ArgumentParser()
 
@@ -75,15 +82,20 @@ def main():
     point_history_classifier = PointHistoryClassifier()
 
     # Read labels ###########################################################
-    with open('model/keypoint_classifier/keypoint_classifier_label.csv',
-              encoding='utf-8-sig') as f:
+    #label_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..','model','keypoint_classifier', 'keypoint_classifier_label.csv'))
+    with open(label_path, encoding = 'utf-8-sig') as f:
+    
+    #with open('model/keypoint_classifier/keypoint_classifier_label.csv',
+              #encoding='utf-8-sig') as f:
         keypoint_classifier_labels = csv.reader(f)
         keypoint_classifier_labels = [
             row[0] for row in keypoint_classifier_labels
         ]
-    with open(
-            'model/point_history_classifier/point_history_classifier_label.csv',
-            encoding='utf-8-sig') as f:
+    #point_label_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..",'..', 'model', 'point_history_classifier', 'point_history_classifier_label.csv'))
+    # with open(
+    #         'model/point_history_classifier/point_history_classifier_label.csv',
+    #         encoding='utf-8-sig') as f:
+    with open(point_label_path, encoding = 'utf-8-sig') as f:
         point_history_classifier_labels = csv.reader(f)
         point_history_classifier_labels = [
             row[0] for row in point_history_classifier_labels

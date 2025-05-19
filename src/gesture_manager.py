@@ -22,6 +22,7 @@ class GestureManager:
         
         self.baseline_pitch = None
         self.baseline_speed = None
+        self.hand_present = False
 
         self.volume_threshold = volume_threshold
         self.pitch_threshold = pitch_threshold
@@ -37,7 +38,7 @@ class GestureManager:
             return
         
         self.hand_present = True
-        
+
         d_volume = my_own_calc.ii_distance()
         d_pitch  = my_own_calc.rdistance()
         d_speed  = my_own_calc.ldistance()

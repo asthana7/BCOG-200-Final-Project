@@ -35,6 +35,7 @@ def update_loop():
         time.sleep(0.1)
 
 def start_tracking():
+    print("Calling app.main()")
     threading.Thread(target = app.main, daemon = True).start()
     threading.Thread(target = update_loop, daemon = True).start()
     print("Threading started, location: my_own_calc")
@@ -47,3 +48,7 @@ def rdistance():
 
 def ldistance():
     return l_distance
+
+def hands_detected():
+    #returns True if hands are currently tracked
+    return app.latest_coords['Left'] is not None or app.latest_coords['Right'] is not None

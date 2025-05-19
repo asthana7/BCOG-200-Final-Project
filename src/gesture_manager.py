@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from src.hand_model import my_own_calc
 
 def map_distance_to_effect(distance, min_d, max_d, min_val, max_val):
@@ -34,6 +35,8 @@ class GestureManager:
                 print("No hands detected, resetting audio to neural")
                 self.audio_manager.set_pitch(0.0)
                 self.audio_manager.set_speed(1.0)
+                self.baseline_pitch = None
+                self.baseline_speed = None
                 self.hand_present = False
             return
         
@@ -43,6 +46,14 @@ class GestureManager:
         d_pitch  = my_own_calc.rdistance()
         d_speed  = my_own_calc.ldistance()
 
+        if not all(map(math.isfinite, [d_volume, d_pitch, d_speed])):
+            print("INvalid gesture data -skipping")
+            return
+        
+        if not (10 <= d_volume <= 1000 and 10 <= d_pitch <= 1000 and 10 <= d_speed <= 1000):
+            print("Out-of-range gesture – skipping")
+            return
+    
         if self.baseline_pitch is None:
             self.baseline_pitch = d_pitch
             print(f"[INIT] Baseline pitch set to {self.baseline_pitch:.2f}")

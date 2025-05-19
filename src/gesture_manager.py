@@ -1,59 +1,70 @@
-# src/gesture_manager.py
 import numpy as np
 from src.hand_model import my_own_calc
-from src.audio_manipulation import AudioManager  as am # Your existing functions
 
 def map_distance_to_effect(distance, min_d, max_d, min_val, max_val):
-    """
-    Normalize distance between [min_d, max_d] to [min_val, max_val].
-    """
-    distance = max(min_d, min(distance, max_d))  # clamp
+    
+    #normalize distance between [min_d, max_d] to [min_val, max_val].
+    
+    distance = max(min_d, min(distance, max_d))  
     return min_val + (max_val - min_val) * ((distance - min_d) / (max_d - min_d))
 
 class GestureManager:
-    def __init__(self, volume_threshold=0.01, pitch_threshold=0.01, speed_threshold=0.01):
+    def __init__(self, audio_manager, volume_threshold=0.01, pitch_threshold=0.01, speed_threshold=0.01):
+        self.audio_manager = audio_manager
+
         self.prev_d_volume = 0.0
         self.prev_d_pitch = 0.0
         self.prev_d_speed = 0.0
+
+        self.smoothed_pitch = 0.0
+        self.smoothed_speed = 1.0
+        self.smoothing_alpha = 0.3
+        
+        self.baseline_pitch = None
+        self.baseline_speed = None
 
         self.volume_threshold = volume_threshold
         self.pitch_threshold = pitch_threshold
         self.speed_threshold = speed_threshold
 
     def process_gestures(self):
-        
         d_volume = my_own_calc.ii_distance()
         d_pitch  = my_own_calc.rdistance()
         d_speed  = my_own_calc.ldistance()
 
+        if self.baseline_pitch is None:
+            self.baseline_pitch = d_pitch
+            print(f"[INIT] Baseline pitch set to {self.baseline_pitch:.2f}")
+        
+        if self.baseline_speed is None:
+            self.baseline_speed = d_speed
+            print(f"[INIT] Baseline speed set to {self.baseline_speed:.2f}")
+        
         delta_volume = abs(d_volume - self.prev_d_volume)
         delta_pitch  = abs(d_pitch - self.prev_d_pitch)
         delta_speed  = abs(d_speed - self.prev_d_speed)
 
-        if delta_volume > self.volume_threshold or delta_pitch > self.pitch_threshold or delta_speed > self.speed_threshold:
-            if delta_volume > delta_pitch and delta_volume > delta_speed:
-                self._handle_volume_change(d_volume)
-            elif delta_pitch > delta_speed:
-                self._handle_pitch_change(d_pitch)
-            else:
-                self._handle_speed_change(d_speed)
+        #volume
+        if delta_volume > self.volume_threshold:
+            self.audio_manager.set_volume(d_volume)
+            print(f"[VOLUME] Distance: {d_volume:.2f} → Volume Factor: {self.audio_manager.volume_factor:.2f}")
+            self.prev_d_volume = d_volume
 
-        self.prev_d_volume = d_volume
-        self.prev_d_pitch = d_pitch
-        self.prev_d_speed = d_speed
+        #pitch
+        if delta_pitch > self.pitch_threshold:
+            target_pitch = np.interp(d_pitch - self.baseline_pitch, [10,550],[-6,6])
+            self.smoothed_pitch = (self.smoothing_alpha * target_pitch + (1 - self.smoothing_alpha)*self.smoothed_pitch)
+            self.audio_manager.set_pitch(self.smoothed_pitch)
+            
+            print(f"[PITCH] Raw: {target_pitch:.2f} → Smoothed: {self.smoothed_pitch:.2f}")
+            self.prev_d_pitch = d_pitch
 
-    def _handle_volume_change(self, d_volume):
-        print(f"Volume distance: {d_volume:.3f}")
-        new_volume = map_distance_to_effect(d_volume, 0.02, 0.3, 0.0, 1.0)
-        return ('volume', new_volume)
+        #speed 
+        if delta_speed > self.speed_threshold:
+            target_speed = np.interp(d_speed - self.baseline_speed, [10, 550], [0.5, 2.0])
+            self.smoothed_speed = (self.smoothing_alpha * target_speed + (1 - self.smoothing_alpha)*self.smoothed_speed)
+            self.audio_manager.set_speed(self.smoothed_speed)
+            print(f"[SPEED] Raw: {target_speed:.2f} → Speed Ratio: {self.smoothed_speed:.2f}")
+            self.prev_d_speed = d_speed
 
-    def _handle_pitch_change(self, d_pitch):
-        print(f"Pitch distance: {d_pitch:.3f}")
-        new_pitch = map_distance_to_effect(d_pitch, 0.01, 0.25, 0.8, 1.25)
-        return ('pitch', new_pitch)
-
-    def _handle_speed_change(self, d_speed):
-        print(f"Speed distance: {d_speed:.3f}")
-        new_speed = map_distance_to_effect(d_speed, 0.01, 0.25, 0.5, 1.5)
-        return ('speed', new_speed)
 

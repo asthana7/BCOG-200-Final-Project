@@ -28,6 +28,16 @@ class GestureManager:
         self.speed_threshold = speed_threshold
 
     def process_gestures(self):
+        if not my_own_calc.hands_detected():
+            if self.hand_present:
+                print("No hands detected, resetting audio to neural")
+                self.audio_manager.set_pitch(0.0)
+                self.audio_manager.set_speed(1.0)
+                self.hand_present = False
+            return
+        
+        self.hand_present = True
+        
         d_volume = my_own_calc.ii_distance()
         d_pitch  = my_own_calc.rdistance()
         d_speed  = my_own_calc.ldistance()

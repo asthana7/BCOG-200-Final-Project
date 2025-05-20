@@ -47,17 +47,16 @@ class GestureManager:
         d_speed  = my_own_calc.ldistance()
 
         if not all(map(math.isfinite, [d_volume, d_pitch, d_speed])):
-            print("INvalid gesture data -skipping")
+            print("Invalid gesture data -skipping")
             return
         
         if not (10 <= d_volume <= 1000 and 10 <= d_pitch <= 1000 and 10 <= d_speed <= 1000):
-            print("Out-of-range gesture – skipping")
+            print("Out-of-range gesture -skipping")
             return
     
         if self.baseline_pitch is None:
             self.baseline_pitch = d_pitch
             print(f"[INIT] Baseline pitch set to {self.baseline_pitch:.2f}")
-        
         if self.baseline_speed is None:
             self.baseline_speed = d_speed
             print(f"[INIT] Baseline speed set to {self.baseline_speed:.2f}")
@@ -78,7 +77,7 @@ class GestureManager:
             self.smoothed_pitch = (self.smoothing_alpha * target_pitch + (1 - self.smoothing_alpha)*self.smoothed_pitch)
             self.audio_manager.set_pitch(self.smoothed_pitch)
             
-            print(f"[PITCH] Raw: {target_pitch:.2f} → Smoothed: {self.smoothed_pitch:.2f}")
+            print(f"[PITCH] Raw: {target_pitch:.2f}, Smoothed: {self.smoothed_pitch:.2f}")
             self.prev_d_pitch = d_pitch
 
         #speed 
@@ -86,7 +85,7 @@ class GestureManager:
             target_speed = np.interp(d_speed - self.baseline_speed, [10, 550], [0.5, 2.0])
             self.smoothed_speed = (self.smoothing_alpha * target_speed + (1 - self.smoothing_alpha)*self.smoothed_speed)
             self.audio_manager.set_speed(self.smoothed_speed)
-            print(f"[SPEED] Raw: {target_speed:.2f} → Speed Ratio: {self.smoothed_speed:.2f}")
+            print(f"[SPEED] Raw: {target_speed:.2f}, Speed Ratio: {self.smoothed_speed:.2f}")
             self.prev_d_speed = d_speed
 
 

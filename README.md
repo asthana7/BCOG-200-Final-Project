@@ -1,16 +1,21 @@
 # Wave 'Em Around
 **BCOG-200 Final Project by Ananya Asthana**
+
 I created a hand-tracking Song Adjuster. The idea is that it'll use computer vision and motion tracking to allow users to control certain aspects of a song. These aspects will include the frequency, speed, and volume. I plan to assign the left hand for frequency, the right hand for the speed,and the distance between the two as volume. I plan to use OpenCV and Mediapipe to assist me with this project.
 
 Disclaimer: I was inspired by an Instagram Reel I saw. Here's a link to the inspiration: https://www.instagram.com/reel/DFclaRKTW63/?
 igsh=MXhrd3UzNnpodTU4eQ==
 
 # Installation
+
 #Install the required dependencies
+
 pip install -r requirements.txt
 
 # Testing
+
 You can run the tests by running pytest in the root directory as a module.
+
 python -m pytest
 
 Introduction to the logic of the program: 

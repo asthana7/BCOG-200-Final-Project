@@ -6,6 +6,15 @@ I created a hand-tracking Song Adjuster. The idea is that it'll use computer vis
 Disclaimer: I was inspired by an Instagram Reel I saw. Here's a link to the inspiration: https://www.instagram.com/reel/DFclaRKTW63/?
 igsh=MXhrd3UzNnpodTU4eQ==
 
+# Setup Instructions
+
+### Python Version
+
+This project was developed and tested on **Python 3.12**
+
+If you're using **Python 3.13** or any other version other than 3.12, some packages (such as mediapipe) may not behave consistently. I would recommend using **Python 3.12** in a virtual environment.
+
+
 # Installation
 
 #Install the required dependencies

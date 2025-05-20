@@ -1,9 +1,0 @@
-In order to test the program, the user must run python file, demo.py, which will then open a tkinter window containing a frame for where the user would be able
-to see themselves and where the hand-tracking and gesture recognition will take place, a frame for logging onto Spotify and choosing a song and finally, a menu
-of options to guide the user. 
-
-Furthermore, to test the functionality, the user must bring up their hands on screen and attempt to either modify attributes of the song- such as bring their left
-index finger and left thumb closer together to decrease the frequency of the song- or access controls on Spotify- such as pausing the song by holding up their
-right hand with the palm facing forward and the index finger raised like so ☝️.
-
-This program does make use of non-standard libraries (so far: mediapipe, openCV, spotipy) and assumes the user has a Spotify account (can be a free account).

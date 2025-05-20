@@ -61,6 +61,9 @@ class AudioManager:
         raw_chunk = self.audio_data[start:end]
         self.frame_index += frames
 
+        if raw_chunk.size == 0:
+            raw_chunk = np.zeros(frames, dtype = np.float32)
+
         #build up effect buffer
         self.effect_buffer = np.concatenate((self.effect_buffer, raw_chunk))
 
@@ -90,9 +93,14 @@ class AudioManager:
         if len(self.processed_buffer) >= frames:
             chunk = self.processed_buffer[:frames]
             self.processed_buffer = self.processed_buffer[frames:]
+        elif len(self.effect_buffer) >= frames:
+            chunk = self.effect_buffer[:frames]
+            self.effect_buffer = self.effect_buffer[frames:]
         else:
-            #not enough data — pad with zeros
-            chunk = np.zeros(frames, dtype=np.float32)
+            #using original audio or silence as last resort (this whole project is beginning to feel like a last resort)
+            start = self.frame_index
+            end = start + frames
+            chunk = self.audio_data[start:end]
 
         #applying volume
         chunk *= self.volume_factor
@@ -116,3 +124,9 @@ class AudioManager:
 
     def set_volume(self, gesture_distance):
         self.volume_factor = np.clip(np.interp(gesture_distance, [30, 300], [0.0, 1.0]), 0.0, 1.0)
+
+    def reset_audio(self):
+        self.set_pitch(0.0)
+        self.set_speed(1.0)
+        self.volume_factor = 1.0
+        print("audio reset to neutral")

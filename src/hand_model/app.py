@@ -13,9 +13,9 @@ import numpy as np
 import mediapipe as mp
 import pygetwindow as gw
 
-from .utils.cvfpscalc import CvFpsCalc
-from .model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
-from .model.point_history_classifier.point_history_classifier import PointHistoryClassifier
+from src.hand_model.utils.cvfpscalc import CvFpsCalc
+from src.hand_model.model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
+from src.hand_model.model.point_history_classifier.point_history_classifier import PointHistoryClassifier
 
 #my own additions-->
 latest_coords = {'Left':None, 'Right': None}

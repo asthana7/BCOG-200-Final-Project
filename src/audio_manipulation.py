@@ -46,11 +46,83 @@ class AudioManager:
             self.stream = None
             print("Audio stream stopped")
 
+    # def audio_callback(self, outdata, frames, time, status):
+    #     if status:
+    #         print("Stream status:", status)
+
+    #     #get next raw chunk
+    #     start = self.frame_index
+    #     end = start + frames
+    #     if end >= len(self.audio_data):
+    #         self.frame_index = 0
+    #         start = 0
+    #         end = frames
+
+    #     raw_chunk = self.audio_data[start:end]
+    #     self.frame_index += frames
+
+    #     if raw_chunk.size == 0:
+    #         raw_chunk = np.zeros(frames, dtype = np.float32)
+
+    #     #build up effect buffer
+    #     self.effect_buffer = np.concatenate((self.effect_buffer, raw_chunk))
+
+    #     #if enough buffer collected, apply pitch/speed
+    #     if len(self.effect_buffer) >= self.buffer_threshold:
+    #         try:
+    #             temp = self.effect_buffer.copy()
+    #             #success = True
+
+    #             if self.pitch_factor != 0.0 and len(temp) >= 2048:
+    #                 temp = librosa.effects.pitch_shift(temp, sr=self.sr, n_steps=self.pitch_factor)
+    #                 print("[AUDIO_CALLBACK] Pitch shift applied:", temp.shape)
+
+    #             if self.speed_factor != 1.0 and len(temp) >= 2048:
+    #                 temp = librosa.effects.time_stretch(temp, rate = self.speed_factor)
+    #                 print("[AUDIO_CALLBACK] Time Stretch applied:", temp.shape)
+    #             if temp.size == 0:
+    #                 raise ValueError("Processed buffer empty after effects")
+                
+    #             self.processed_buffer = np.concatenate((self.processed_buffer, temp))
+    #             self.effect_buffer = np.zeros(0, dtype=np.float32)
+    #         except Exception as e:
+    #             print("Effect processing error:", e)
+    #             # success = False
+    #             # fallback = self.audio_data[start:end]
+    #             # self.processed_buffer = np.concatenate((self.processed_buffer, fallback))
+
+    #     #extract final output from processed buffer
+    #     if len(self.processed_buffer) >= frames:
+    #         chunk = self.processed_buffer[:frames]
+    #         self.processed_buffer = self.processed_buffer[frames:]
+    #     elif len(self.effect_buffer) >= frames:
+    #         chunk = self.effect_buffer[:frames]
+    #         self.effect_buffer = self.effect_buffer[frames:]
+    #     else:
+    #     #     #using original audio or silence as last resort (this whole project is beginning to feel like a last resort)
+    #         start = self.frame_index
+    #         end = start + frames
+    #         chunk = self.audio_data[start:end]
+    #         #chunk = np.zeros(frames, dtype = np.float32)
+
+    #     #applying volume
+    #     chunk *= self.volume_factor
+    #     if not np.isfinite(chunk).all():
+    #         print("Non-finite values in chunk - zeroing out")
+    #         chunk = np.zeros(frames, dtype = np.float32)
+    #     # if chunk.size == 0:
+    #     #     chunk = np.zeros(frames, dtype = np.float32)
+    #     try:
+    #         outdata[:] = chunk.reshape(-1, 1)
+    #     except Exception as e:
+    #         print("Reshape error", e)
+    #         outdata[:] = np.zeros((frames, 1), dtype=np.float32)
+
     def audio_callback(self, outdata, frames, time, status):
         if status:
             print("Stream status:", status)
 
-        #get next raw chunk
+        # get next raw chunk
         start = self.frame_index
         end = start + frames
         if end >= len(self.audio_data):
@@ -62,67 +134,64 @@ class AudioManager:
         self.frame_index += frames
 
         if raw_chunk.size == 0:
-            raw_chunk = np.zeros(frames, dtype = np.float32)
+            raw_chunk = np.zeros(frames, dtype=np.float32)
 
-        #build up effect buffer
+        # build effect buffer
         self.effect_buffer = np.concatenate((self.effect_buffer, raw_chunk))
 
-        #if enough buffer collected, apply pitch/speed
+        # apply pitch and speed if enough data
         if len(self.effect_buffer) >= self.buffer_threshold:
             try:
                 temp = self.effect_buffer.copy()
-                #success = True
 
                 if self.pitch_factor != 0.0 and len(temp) >= 2048:
                     temp = librosa.effects.pitch_shift(temp, sr=self.sr, n_steps=self.pitch_factor)
+                    print("[AUDIO_CALLBACK] Pitch shift applied")
 
                 if self.speed_factor != 1.0 and len(temp) >= 2048:
-                    temp = librosa.effects.time_stretch(temp, rate = self.speed_factor)
-                if temp.size == 0:
-                    raise ValueError("Processed buffer empty after effects")
-                
-                self.processed_buffer = np.concatenate((self.processed_buffer, temp))
-                self.effect_buffer = np.zeros(0, dtype=np.float32)
+                    temp = librosa.effects.time_stretch(temp, rate=self.speed_factor)
+                    print("[AUDIO_CALLBACK] Time stretch applied")
+
+                if temp.size > 0:
+                    self.processed_buffer = np.concatenate((self.processed_buffer, temp))
+                    self.effect_buffer = np.zeros(0, dtype=np.float32)
             except Exception as e:
                 print("Effect processing error:", e)
-                # success = False
-                # fallback = self.audio_data[start:end]
-                # self.processed_buffer = np.concatenate((self.processed_buffer, fallback))
 
-        #extract final output from processed buffer
+        # try processed buffer first
         if len(self.processed_buffer) >= frames:
             chunk = self.processed_buffer[:frames]
             self.processed_buffer = self.processed_buffer[frames:]
+            print("[AUDIO_CALLBACK] Using processed buffer")
         elif len(self.effect_buffer) >= frames:
             chunk = self.effect_buffer[:frames]
             self.effect_buffer = self.effect_buffer[frames:]
+            print("[AUDIO_CALLBACK] Using effect buffer")
         else:
-            #using original audio or silence as last resort (this whole project is beginning to feel like a last resort)
-            start = self.frame_index
-            end = start + frames
-            chunk = self.audio_data[start:end]
+            chunk = raw_chunk
+            print("[AUDIO_CALLBACK] Fallback to raw chunk")
 
-        #applying volume
+        # apply volume
         chunk *= self.volume_factor
         if not np.isfinite(chunk).all():
-            print("Non-finite values in chunk - zeroing out")
-            chunk = np.zeros(frames, dtype = np.float32)
-        # if chunk.size == 0:
-        #     chunk = np.zeros(frames, dtype = np.float32)
+            print("Non-finite values in chunk – zeroing out")
+            chunk = np.zeros(frames, dtype=np.float32)
+
         try:
             outdata[:] = chunk.reshape(-1, 1)
         except Exception as e:
             print("Reshape error", e)
             outdata[:] = np.zeros((frames, 1), dtype=np.float32)
 
-
     def set_pitch(self, n_steps):
+        print(f"[AUDIO_MANAGER] Setting pitch to {n_steps}")
         self.pitch_factor = n_steps
 
     def set_speed(self, speed_ratio):
         self.speed_factor = speed_ratio
 
     def set_volume(self, gesture_distance):
+        
         self.volume_factor = np.clip(np.interp(gesture_distance, [30, 300], [0.0, 1.0]), 0.0, 1.0)
 
     def reset_audio(self):

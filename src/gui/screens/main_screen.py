@@ -39,16 +39,18 @@ class MainScreen(tk.Frame):
         threading.Thread(target = self.reliably_position_mediapipe, daemon = True).start()
 
     def reliably_position_mediapipe(self):
-        for _ in range(10):  # Try for ~5 seconds max
-            try:
-                win = gw.getWindowsWithTitle("Hand Gesture Recognition")[0]
-                win.moveTo(1000, 100)
-                win.activate()
-                print("[INFO] MediaPipe window positioned.")
-                return
-            except IndexError:
-                time.sleep(0.5)
-        print("[WARNING] Could not find MediaPipe window to reposition.")
+        def monitor_and_reposition():
+            while True:
+                try:
+                    win = gw.getWindowsWithTitle("Hand Gesture Recognition")[0]
+                    win.moveTo(0, 0)
+                    win.activate()
+                    time.sleep(1.5)  # Keep reapplying every second to override shift
+                except IndexError:
+                    pass
+                time.sleep(1)
+        threading.Thread(target=monitor_and_reposition, daemon=True).start()
+
 
     def start_hand_tracking(self):
         my_own_calc.start_tracking()

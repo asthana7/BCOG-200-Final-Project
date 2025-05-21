@@ -10,7 +10,6 @@
 #since it can recognise clockwise/ counter-clockwise, use that to forward/ rewind a song
 # src/gui.py
 
-
 from tkinter import filedialog, ttk, messagebox
 import tkinter as tk
 from src.gesture_manager import GestureManager
@@ -27,9 +26,9 @@ class AudioGestureApp:
 
         self.audio_manager = AudioManager()
         self.song_path = None
-        #self.gesture_manager = GestureManager()
-        self.gesture_queue = queue.Queue()
-        self.gesture_manager = GestureManager(self.gesture_queue)
+        self.gesture_manager = GestureManager(self.audio_manager)
+        # self.gesture_queue = queue.Queue()
+        # self.gesture_manager = GestureManager(self.gesture_queue)
 
         self.audio_data = None
         self.sr = None
@@ -53,15 +52,21 @@ class AudioGestureApp:
         self.process_gestures_thread()
         threading.Thread(target=self.start_camera_feed, daemon = True).start()
 
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
     def select_song(self):
+        #stop any song that might be alr playing
+        self.audio_manager.stop_audio()
+
         # Trigger file selection and load audio file
         self.song_path = tk.filedialog.askopenfilename(filetypes=[("MP3 files", "*.mp3")])
         if self.song_path:
             self.audio_data, self.sr = self.audio_manager.load_audio_file(self.song_path)
             self.song_label.config(text=f"Playing: {self.song_path.split('/')[-1]}")
-            self.start_audio_playback()
+            self.audio_manager.start_stream()
             self.process_gestures_thread()
-        # return self.song_path
+        
 
     def start_audio_playback(self):
         if self.audio_data:
@@ -82,23 +87,9 @@ class AudioGestureApp:
     def process_gestures(self):
         #Check for gesture changes in the loop
         while True:
-            gesture_data = self.gesture_queue.get()
-            effect_change = self.gesture_manager.process_gestures()
-
-            if effect_change:
-                effect_type, effect_value = effect_change
-
-                if effect_type == 'volume':
-                    self.audio_manager.volume(effect_value)
-                    self.root.after(0, self.update_volume_label, effect_value)
-                elif effect_type == 'pitch':
-                    self.audio_manager.frequency(effect_value)
-                    self.root.after(0, self.update_pitch_label, effect_value)
-                elif effect_type == 'speed':
-                    self.audio_manager.speed(effect_value)
-                    self.root.after(0, self.update_speed_label, effect_value)
-
-            time.sleep(0.1)  # Adjust frequency of gesture processing
+            self.gesture_manager.process_gestures()
+            time.sleep(0.1)
+            
 
     def update_volume_label(self, effect_value):
         """Update the volume label."""
@@ -111,3 +102,8 @@ class AudioGestureApp:
     def update_speed_label(self, effect_value):
         """Update the speed label."""
         self.speed_label.config(text=f"Speed: {effect_value:.2f}")
+
+    def on_closing(self):
+        if self.audio_manager:
+            self.audio_manager.stop_audio()
+        self.root.destroy()

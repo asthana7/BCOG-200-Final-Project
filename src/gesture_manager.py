@@ -50,9 +50,6 @@ class GestureManager:
             print("Invalid gesture data -skipping")
             return
         
-        if not (10 <= d_volume <= 1000 and 10 <= d_pitch <= 1000 and 10 <= d_speed <= 1000):
-            print("Out-of-range gesture -skipping")
-            return
     
         if self.baseline_pitch is None:
             self.baseline_pitch = d_pitch

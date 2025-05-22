@@ -30,31 +30,7 @@ class PointHistoryClassifier(object):
         self.score_th = score_th
         self.invalid_value = invalid_value
 
-# class PointHistoryClassifier(object):
-#     def __init__(
-#         self,
-#         model_path='model/point_history_classifier/point_history_classifier.tflite',
-#         score_th=0.5,
-#         invalid_value=0,
-#         num_threads=1,
-#     ):
-#         self.interpreter = tf.lite.Interpreter(model_path=model_path,
-#                                                num_threads=num_threads)
 
-#         self.interpreter.allocate_tensors()
-#         self.input_details = self.interpreter.get_input_details()
-#         self.output_details = self.interpreter.get_output_details()
-
-#         self.score_th = score_th
-#         self.invalid_value = invalid_value
-
-# # class PointHistoryClassifier(object):
-# #     def __init__(self, model_path='model/point_history_classifier/point_history_classifier.tflite'):
-# #         model_path = os.path.join(os.path.dirname(__file__), '..', '..', model_path)
-# #         model_path = os.path.abspath(model_path)
-
-# #         self.interpreter = tf.lite.Interpreter(model_path=model_path)
-# #         self.interpreter.allocate_tensors()
     def __call__(
         self,
         point_history,

@@ -13,9 +13,9 @@ import numpy as np
 import mediapipe as mp
 import pygetwindow as gw
 
-from src.hand_model.utils.cvfpscalc import CvFpsCalc
-from src.hand_model.model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
-from src.hand_model.model.point_history_classifier.point_history_classifier import PointHistoryClassifier
+from .utils.cvfpscalc import CvFpsCalc
+from .model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
+from .model.point_history_classifier.point_history_classifier import PointHistoryClassifier
 
 #my own additions-->
 latest_coords = {'Left':None, 'Right': None}
@@ -48,8 +48,12 @@ def get_args():
     args = parser.parse_args()
 
     return args
-
+latest_gesture_label = None
 latest_frame = None #global var for GUI
+
+def get_gesture_label():
+    return latest_gesture_label
+
 def main():
     # Argument parsing #################################################################
     global latest_coords, is_running
@@ -186,11 +190,14 @@ def main():
                 if point_history_len == (history_length * 2):
                     finger_gesture_id = point_history_classifier(
                         pre_processed_point_history_list)
+                
 
                 # Calculates the gesture IDs in the latest detection
                 finger_gesture_history.append(finger_gesture_id)
                 most_common_fg_id = Counter(
                     finger_gesture_history).most_common()
+                global latest_gesture_label
+                latest_gesture_label = point_history_classifier_labels[most_common_fg_id[0][0]]
 
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
@@ -222,14 +229,7 @@ def main():
                 window_positioned = True
             except Exception as e:
                 print("Window move error", e)
-        # frame_count += 1
-        # if frame_count % 30 == 0:
-        #     try:
-        #         win = gw.getWindowsWithTitle('Hand Gesture Recognition')[0]
-        #         win.moveTo(960,0)
-        #         win.activate()
-        #     except IndexError:
-        #         pass
+        
         
 
     

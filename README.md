@@ -6,6 +6,10 @@ I created a hand-tracking Volume Adjuster. The idea is that it'll use computer v
 Disclaimer: I was inspired by an Instagram Reel I saw. Here's a link to the inspiration: https://www.instagram.com/reel/DFclaRKTW63/?
 igsh=MXhrd3UzNnpodTU4eQ==
 
+# FEATURES:
+1) Can alter volume depending on the distance between the index fingers
+2) Can skip to the next or previous song if you make a clockwise/ counter clockwise motion with your finger
+3) 
 # Setup Instructions
 
 ### Python Version

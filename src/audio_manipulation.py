@@ -28,6 +28,7 @@ class AudioManager:
             "audios/shake_that_rump.mp3",
         ]
         self.current_track_index = 0
+        #gesture_type = get_gesture_label()
 
         self.stream = None
         self.input_queue = queue.Queue()
@@ -76,11 +77,11 @@ class AudioManager:
         now = time.time()
         if now - self.last_gesture_time < 3:
             return
-        if gesture_type == "Clockwise":
+        if gesture_type == "Clockwise" or gesture_type == "next":
             print("skipping to next song in list")
             self.skip_to_next()
             self.last_gesture_time = now
-        elif gesture_type == "Counter Clockwise":
+        elif gesture_type == "Counter Clockwise" or gesture_type == "previous":
             print("skipping to previous song in list")
             self.skip_to_previous()
             self.last_gesture_time = now

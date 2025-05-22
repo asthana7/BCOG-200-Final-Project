@@ -84,8 +84,7 @@ class AudioManager:
             print("skipping to previous song in list")
             self.skip_to_previous()
             self.last_gesture_time = now
-        elif gesture_type == "Stop":
-            self.stop_audio()
+        
 
 
 

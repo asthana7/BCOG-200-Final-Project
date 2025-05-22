@@ -1,3 +1,165 @@
+import sounddevice as sd
+import numpy as np
+import librosa
+import threading
+import queue
+import time
+from src.hand_model import my_own_calc
+
+from src.hand_model.app import get_gesture_label
+
+class AudioManager:
+    def __init__(self):
+        self.audio_data = None
+        self.sr = None
+        self.frame_index = 0
+        self.block_size = 8192
+
+        self.pitch_factor = 0.0
+        self.speed_factor = 1.0
+        self.volume_factor = 1.0
+
+        self.last_gesture_time = 0
+        self.track_list = [
+            "audios/between_the_lines.mp3",
+            "audios/calm_the_f_down.mp3",
+            "audios/chaos_agent.mp3",
+            "audios/garage_fuzz.mp3",
+            "audios/shake_that_rump.mp3",
+        ]
+        self.current_track_index = 0
+
+        self.stream = None
+        self.input_queue = queue.Queue()
+        self.output_queue = queue.Queue()
+        self.lock = threading.Lock()
+
+    def load_audio_file(self, path):
+        self.audio_data, self.sr = librosa.load(path, sr=None, mono=True)
+        self.frame_index = 0
+        print(f"Audio file loaded: {path}")
+        return self.audio_data, self.sr
+
+    def start_stream(self):
+        if self.stream:
+            self.stream.stop()
+            self.stream.close()
+        self.stream = sd.OutputStream(
+            samplerate=self.sr,
+            channels=1,
+            dtype='float32',
+            callback=self.audio_callback,
+            blocksize=self.block_size
+        )
+        self.stream.start()
+        print("Audio stream started")
+
+    def skip_to_next(self):
+        self.current_track_index = (self.current_track_index + 1) % len(self.track_list)
+        path = self.track_list[self.current_track_index]
+        self.stop_audio()
+        self.load_audio_file(path)
+        self.start_stream()
+        print(f"[Audio Manager] playing {path}")
+
+    def skip_to_previous(self):
+        self.current_track_index = (self.current_track_index - 1) % len(self.track_list)
+        path = self.track_list[self.current_track_index]
+        self.stop_audio()
+        self.load_audio_file(path)
+        self.start_stream()
+
+        print(f"[Audio Manager] playing {path}")
+
+    def handle_gesture(self):
+        gesture_type = get_gesture_label()
+        now = time.time()
+        if now - self.last_gesture_time < 3:
+            return
+        if gesture_type == "Clockwise":
+            print("skipping to next song in list")
+            self.skip_to_next()
+            self.last_gesture_time = now
+        elif gesture_type == "Counter Clockwise":
+            print("skipping to previous song in list")
+            self.skip_to_previous()
+            self.last_gesture_time = now
+        elif gesture_type == "Stop":
+            self.stop_audio()
+
+
+
+    def audio_callback(self, outdata, frames, time, status):
+        gesture = get_gesture_label()
+        print(gesture)
+        self.handle_gesture()
+        if status:
+            print("Stream status:", status)
+
+        start = self.frame_index
+        end = start + frames
+        if end >= len(self.audio_data):
+            self.frame_index = 0
+            start = 0
+            end = frames
+
+        chunk = self.audio_data[start:end]
+        self.frame_index += frames
+
+        #jand check
+        hands_up = my_own_calc.hands_detected()
+
+        #feed buffer only if gesture is active
+        if hands_up and self.input_queue.qsize() < 10:
+            self.input_queue.put(chunk.copy())
+
+        #try using processed output if available
+        try:
+            processed = self.output_queue.get(timeout = 0.02)
+            chunk = processed
+            
+        except queue.Empty:
+            print("[AUDIO_CALLBACK] Using raw chunk fallback")
+
+        #volume always applied
+        chunk *= self.volume_factor
+        if not np.isfinite(chunk).all():
+            chunk = np.zeros(frames, dtype=np.float32)
+
+        try:
+            outdata[:] = chunk.reshape(-1, 1)
+            
+        except Exception as e:
+            
+            outdata[:] = np.zeros((frames, 1), dtype=np.float32)
+
+
+    def stop_audio(self):
+        if self.stream:
+            self.stream.stop()
+            self.stream.close()
+            self.stream = None
+            print("Audio stream stopped")
+
+    def set_pitch(self, n_steps):
+        print(f"[AUDIO_MANAGER] Setting pitch to {n_steps}")
+        self.pitch_factor = n_steps
+
+    def set_speed(self, speed_ratio):
+        print(f"[AUDIO_MANAGER] Setting speed to {speed_ratio}")
+        self.speed_factor = speed_ratio
+
+    def set_volume(self, gesture_distance):
+        self.volume_factor = np.clip(np.interp(gesture_distance, [30, 300], [0.0, 1.0]), 0.0, 1.0)
+
+    def reset_audio(self):
+        self.set_pitch(0.0)
+        self.set_speed(1.0)
+        self.volume_factor = 1.0
+        print("Audio reset to neutral")
+
+
+#what was actually supposed to be this project: also control frequency+speed but i couldnt get it up to real-time standards
 # import sounddevice as sd
 # import numpy as np
 # import librosa
@@ -154,194 +316,3 @@
 #         self.set_speed(1.0)
 #         self.volume_factor = 1.0
 #         print("audio reset to neutral")
-
-
-import sounddevice as sd
-import numpy as np
-import librosa
-import threading
-import queue
-import time
-from src.hand_model import my_own_calc
-from src.hand_model.app import get_gesture_label
-
-class AudioManager:
-    def __init__(self):
-        self.audio_data = None
-        self.sr = None
-        self.frame_index = 0
-        self.block_size = 8192
-
-        self.pitch_factor = 0.0
-        self.speed_factor = 1.0
-        self.volume_factor = 1.0
-
-        self.last_gesture_time = 0
-        self.track_list = [
-            "audios/between_the_lines.mp3",
-            "audios/calm_the_f_down.mp3",
-            "audios/chaos_agent.mp3",
-            "audios/garage_fuzz.mp3",
-            "audios/shake_that_rump.mp3",
-        ]
-        self.current_track_index = 0
-
-        self.stream = None
-        self.input_queue = queue.Queue()
-        self.output_queue = queue.Queue()
-        self.lock = threading.Lock()
-
-        # self.processor_thread = threading.Thread(target=self.process_effects, daemon=True)
-        # self.processor_thread.start()
-
-    def load_audio_file(self, path):
-        self.audio_data, self.sr = librosa.load(path, sr=None, mono=True)
-        self.frame_index = 0
-        print(f"Audio file loaded: {path}")
-        return self.audio_data, self.sr
-
-    def start_stream(self):
-        if self.stream:
-            self.stream.stop()
-            self.stream.close()
-        self.stream = sd.OutputStream(
-            samplerate=self.sr,
-            channels=1,
-            dtype='float32',
-            callback=self.audio_callback,
-            blocksize=self.block_size
-        )
-        self.stream.start()
-        print("Audio stream started")
-
-    def skip_to_next(self):
-        self.current_track_index = (self.current_track_index + 1) % len(self.track_list)
-        path = self.track_list[self.current_track_index]
-        self.stop_audio()
-        self.load_audio_file(path)
-        self.start_stream()
-        print(f"[Audio Manager] playing {path}")
-
-    def skip_to_previous(self):
-        self.current_track_index = (self.current_track_index - 1) % len(self.track_list)
-        path = self.track_list[self.current_track_index]
-        self.stop_audio()
-        self.load_audio_file(path)
-        self.start_stream()
-
-        print(f"[Audio Manager] playing {path}")
-
-    def handle_gesture(self):
-        gesture_type = get_gesture_label
-        now = time.time()
-        if now - self.last_gesture_time < 1.5:
-            return
-        if gesture_type == "Clockwise":
-            print("[AUDIO MANAGER] detected clockwise gesture--> skipping to next song in list")
-            self.skip_to_next()
-            self.last_gesture_time = now
-        elif gesture_type == "Counter Clockwise":
-            print("skipping to previous song in list")
-            self.skip_to_previous()
-            self.last_gesture_time = now
-
-
-
-    def audio_callback(self, outdata, frames, time, status):
-        self.handle_gesture()
-        if status:
-            print("Stream status:", status)
-
-        start = self.frame_index
-        end = start + frames
-        if end >= len(self.audio_data):
-            self.frame_index = 0
-            start = 0
-            end = frames
-
-        chunk = self.audio_data[start:end]
-        self.frame_index += frames
-
-        # Gesture check
-        hands_up = my_own_calc.hands_detected()
-
-        # Feed buffer only if gesture is active
-        if hands_up and self.input_queue.qsize() < 10:
-            self.input_queue.put(chunk.copy())
-
-        # Try using processed output if available
-        try:
-            processed = self.output_queue.get(timeout = 0.02)
-            chunk = processed
-            print("[AUDIO_CALLBACK] Using processed buffer")
-        except queue.Empty:
-            print("[AUDIO_CALLBACK] Using raw chunk fallback")
-
-        # Volume always applied
-        chunk *= self.volume_factor
-        if not np.isfinite(chunk).all():
-            chunk = np.zeros(frames, dtype=np.float32)
-
-        try:
-            outdata[:] = chunk.reshape(-1, 1)
-            print(f"[DEBUG FINAL] Output chunk shape: {chunk.shape}, min: {chunk.min()}, max: {chunk.max()}")
-        except Exception as e:
-            print("[ERROR] Reshape failed:", e)
-            outdata[:] = np.zeros((frames, 1), dtype=np.float32)
-
-
-    # def process_effects(self):
-    #     buffer_accumulator = np.zeros(0, dtype=np.float32)
-
-    #     while True:
-    #         try:
-    #             new_chunk = self.input_queue.get(timeout=1)
-    #             buffer_accumulator = np.concatenate((buffer_accumulator, new_chunk))
-
-    #             # Process only if we have enough data
-    #             if len(buffer_accumulator) >= 11025:
-    #                 chunk = buffer_accumulator[:11025]
-    #                 buffer_accumulator = buffer_accumulator[11025:]
-
-    #                 if abs(self.pitch_factor) > 0.1:
-    #                     #chunk = librosa.effects.pitch_shift(chunk, sr=self.sr, n_steps=self.pitch_factor)
-    #                     print("[THREAD] Pitch shift applied")
-
-    #                 if abs(self.speed_factor - 1.0) > 0.05:
-    #                     if len(chunk) < 2048:
-    #                         chunk = np.pad(chunk, (0, 2048 - len(chunk)), mode='reflect')
-    #                     chunk = librosa.effects.time_stretch(chunk, rate=self.speed_factor)
-    #                     print("[THREAD] Time stretch applied")
-
-    #                 self.output_queue.put(chunk)
-    #         except queue.Empty:
-    #             continue
-    #         except Exception as e:
-    #             print("[THREAD ERROR]", e)
-    #             continue
-
-
-
-    def stop_audio(self):
-        if self.stream:
-            self.stream.stop()
-            self.stream.close()
-            self.stream = None
-            print("Audio stream stopped")
-
-    def set_pitch(self, n_steps):
-        print(f"[AUDIO_MANAGER] Setting pitch to {n_steps}")
-        self.pitch_factor = n_steps
-
-    def set_speed(self, speed_ratio):
-        print(f"[AUDIO_MANAGER] Setting speed to {speed_ratio}")
-        self.speed_factor = speed_ratio
-
-    def set_volume(self, gesture_distance):
-        self.volume_factor = np.clip(np.interp(gesture_distance, [30, 300], [0.0, 1.0]), 0.0, 1.0)
-
-    def reset_audio(self):
-        self.set_pitch(0.0)
-        self.set_speed(1.0)
-        self.volume_factor = 1.0
-        print("Audio reset to neutral")
